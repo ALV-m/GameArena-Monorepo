@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">GameArena</string>
+    <string name="booster_title">Game Booster</string>
+    <string name="tournament_panel">Tournament</string>
+    <string name="performance_panel">Performance</string>
+    <string name="notifications_panel">Notifications</string>
+    <string name="chat_panel">Chat</string>
+    <string name="clipboard_panel">Clipboard</string>
+    <string name="audio_panel">Audio</string>
+    <string name="screen_panel">Screen Tools</string>
+    <string name="wallet_panel">Wallet</string>
+    <string name="match_ready">Match Ready</string>
+    <string name="room_code">Room Code</string>
+    <string name="password">Password</string>
+    <string name="copy_code">Copy Code</string>
+    <string name="copy_pass">Copy Pass</string>
+    <string name="report_issue">Report Issue</string>
+    <string name="launch_game">Launch Game</string>
+    <string name="submit_result">Submit Result</string>
+    <string name="start_dispute">Start Dispute</string>
+    <string name="no_active_match">No active match</string>
+    <string name="overlay_active">GameArena Booster Active</string>
+    <string name="overlay_notification_text">Tap to manage overlay</string>
+</resources>

@@ -1,0 +1,39 @@
+# === Android (app/) ===
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# === Node.js (backend/ + web/) ===
+node_modules/
+.env
+.env.local
+.env.*.local
+.next/
+out/
+dist/
+*.log
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Misc ===
+*.log
+*.tmp
+*.bak
