@@ -439,7 +439,8 @@ export default function AdminDashboard() {
                 <tr>
                   <th style={styles.th}>Reporter</th>
                   <th style={styles.th}>Match</th>
-                  <th style={styles.th}>Stake</th>
+                  <th style={styles.th}>Score</th>
+                  <th style={styles.th}>OCR</th>
                   <th style={styles.th}>Reason</th>
                   <th style={styles.th}>Evidence</th>
                   <th style={styles.th}>Status</th>
@@ -452,7 +453,26 @@ export default function AdminDashboard() {
                   <tr key={d.id}>
                     <td style={styles.td}>{d.reporter_name}</td>
                     <td style={styles.td}>{d.player1_name} vs {d.player2_name}</td>
-                    <td style={styles.td}>KES {parseFloat(d.stake_amount || 0).toFixed(2)}</td>
+                    <td style={styles.td}>
+                      {d.player1_score != null ? (
+                        <span style={{ fontWeight: 'bold', color: '#6C5CE7' }}>
+                          {d.player1_score} - {d.player2_score}
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td style={styles.td}>
+                      {d.screenshot_metadata?.ocr_history?.length > 0 ? (
+                        (() => {
+                          const ocr = d.screenshot_metadata.ocr_history[d.screenshot_metadata.ocr_history.length - 1];
+                          const conf = Math.round((ocr.confidence || 0) * 100);
+                          return (
+                            <span style={styles.badge(conf >= 80 ? '#6ab04c' : conf >= 50 ? '#f9ca24' : '#ff6b6b')}>
+                              {conf}% — {ocr.source || 'auto'}
+                            </span>
+                          );
+                        })()
+                      ) : '-'}
+                    </td>
                     <td style={styles.td}>{d.reason?.substring(0, 50)}{d.reason?.length > 50 ? '...' : ''}</td>
                     <td style={styles.td}>
                       {d.evidence_url ? (
@@ -537,6 +557,34 @@ export default function AdminDashboard() {
                     {disputeModal.player1_name} vs {disputeModal.player2_name}
                   </p>
                 </div>
+                {disputeModal.player1_score != null && (
+                  <div>
+                    <p style={{ color: '#888', fontSize: '12px', margin: '0 0 4px 0' }}>Recorded Score</p>
+                    <p style={{ color: '#6C5CE7', margin: 0, fontWeight: 'bold', fontSize: '18px' }}>
+                      {disputeModal.player1_score} - {disputeModal.player2_score}
+                    </p>
+                  </div>
+                )}
+                {disputeModal.screenshot_metadata?.ocr_history?.length > 0 && (
+                  <div>
+                    <p style={{ color: '#888', fontSize: '12px', margin: '0 0 4px 0' }}>OCR History</p>
+                    {disputeModal.screenshot_metadata.ocr_history.map((ocr, i) => (
+                      <div key={i} style={{ background: '#1a1a2e', borderRadius: '6px', padding: '8px', marginTop: '4px' }}>
+                        <p style={{ color: '#fff', margin: 0, fontSize: '13px' }}>
+                          Score: {ocr.player1_score} - {ocr.player2_score}
+                          <span style={{ color: '#888', marginLeft: '8px' }}>
+                            ({Math.round((ocr.confidence || 0) * 100)}% confidence)
+                          </span>
+                        </p>
+                        {ocr.raw_text && (
+                          <p style={{ color: '#666', margin: '4px 0 0', fontSize: '11px', fontStyle: 'italic' }}>
+                            "{ocr.raw_text.substring(0, 120)}{ocr.raw_text.length > 120 ? '...' : ''}"
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div style={{ gridColumn: 'span 2' }}>
                   <p style={{ color: '#888', fontSize: '12px', margin: '0 0 4px 0' }}>Reason</p>
                   <p style={{ color: '#fff', margin: 0 }}>{disputeModal.reason}</p>

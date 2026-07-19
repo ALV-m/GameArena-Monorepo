@@ -24,9 +24,9 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(authManager: AuthManager): OkHttpClient {
+    fun provideOkHttpClient(authManager: dagger.Lazy<AuthManager>): OkHttpClient {
         val authInterceptor = Interceptor { chain ->
-            val token = authManager.getTokenBlocking()
+            val token = authManager.get().getTokenBlocking()
             val request = if (!token.isNullOrEmpty()) {
                 chain.request().newBuilder()
                     .addHeader("Authorization", "Bearer $token")

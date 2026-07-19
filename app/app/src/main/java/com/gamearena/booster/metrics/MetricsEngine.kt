@@ -27,16 +27,15 @@ data class MetricsState(
     val networkRxKbps: Float = 0f,
     val networkTxKbps: Float = 0f,
     val pingMs: Int = 0,
-    // Full thermal breakdown — see ThermalMonitor.ThermalState for field meaning.
     val thermalCpuC: Float = 0f,
     val thermalGpuC: Float = 0f,
     val thermalNpuC: Float = 0f,
     val thermalSkinC: Float = 0f,
     val thermalStatus: Int = 0,
-    // Busiest process at this tick (see TopProcessMonitor) — names the likely
-    // culprit when a frame drop isn't explained by thermal or frequency alone.
     val topProcessName: String? = null,
-    val topProcessCpuPercent: Float = 0f
+    val topProcessCpuPercent: Float = 0f,
+    val foregroundAppPackage: String? = null,
+    val foregroundAppLabel: String? = null
 )
 
 @Singleton
@@ -49,6 +48,7 @@ class MetricsEngine @Inject constructor(
     private val thermalMonitor: ThermalMonitor,
     private val pingMonitor: PingMonitor,
     private val topProcessMonitor: TopProcessMonitor,
+    private val foregroundAppMonitor: ForegroundAppMonitor,
     private val settingsRepository: SettingsRepository
 ) {
     private val _metricsState = MutableStateFlow(MetricsState())
@@ -120,7 +120,7 @@ class MetricsEngine @Inject constructor(
         // (settingsRepository.enabledModules) OR temporarily requested by a screen/recording
         // (screenOverrideModules). The overlay only ever looks at the former, so a
         // screen override never changes what the overlay shows — only what gets measured.
-        // This means zero polling happens for disabled modules — no wasted CPU, battery, or Shizuku calls.
+        // This means zero polling happens for disabled modules — no wasted CPU or battery.
         engineScope.launch {
             combine(
                 settingsRepository.enabledModules,
@@ -193,6 +193,14 @@ class MetricsEngine @Inject constructor(
                         )
                     }
                 }
+                toggleModule("foreground_app", enabled) {
+                    foregroundAppMonitor.foregroundApp.collect { app ->
+                        _metricsState.value = _metricsState.value.copy(
+                            foregroundAppPackage = app?.packageName,
+                            foregroundAppLabel = app?.label
+                        )
+                    }
+                }
             }
         }
     }
@@ -222,6 +230,7 @@ class MetricsEngine @Inject constructor(
                 )
                 "ping"    -> _metricsState.value.copy(pingMs = 0)
                 "top_process" -> _metricsState.value.copy(topProcessName = null, topProcessCpuPercent = 0f)
+                "foreground_app" -> _metricsState.value.copy(foregroundAppPackage = null, foregroundAppLabel = null)
                 else      -> _metricsState.value
             }
         }

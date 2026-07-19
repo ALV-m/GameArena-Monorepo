@@ -42,7 +42,13 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.gamearena.booster.ui.theme.GameArenaTheme
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -57,17 +63,19 @@ class OverlayManager @Inject constructor(
     private var overlayLifecycleOwner: OverlayLifecycleOwner? = null
     private var windowParams: WindowManager.LayoutParams? = null
 
+    private val _isVisible = MutableStateFlow(false)
+    val isVisible: StateFlow<Boolean> = _isVisible.asStateFlow()
+
     fun showOverlay() {
-        android.util.Log.d("GameArena_Overlay", "Attempting to show overlay...")
         if (composeView != null) {
-            android.util.Log.d("GameArena_Overlay", "Overlay already exists, returning.")
+            _isVisible.value = true
             return
         }
 
-        android.util.Log.d("GameArena_Overlay", "Creating new ComposeView...")
         composeView = ComposeView(context).apply {
             setContent {
                 GameArenaTheme {
+                    val visible by _isVisible.collectAsState()
                     val mode by settingsRepository.overlayMode.collectAsState()
                     val enabledModules by settingsRepository.enabledModules.collectAsState()
                     val opacity by settingsRepository.overlayOpacity.collectAsState()
@@ -78,48 +86,52 @@ class OverlayManager @Inject constructor(
                     val borderColorIndex by settingsRepository.overlayBorderColorIndex.collectAsState()
                     val textColorIndex by settingsRepository.overlayTextColorIndex.collectAsState()
                     val metricsState by metricsEngine.metricsState.collectAsState()
-                    
-                    OverlayContent(
-                        mode = mode,
-                        enabledModules = enabledModules,
-                        opacity = opacity,
-                        textSize = textSize,
-                        useMonospace = useMonospace,
-                        colorIndex = colorIndex,
-                        bgColorIndex = bgColorIndex,
-                        borderColorIndex = borderColorIndex,
-                        textColorIndex = textColorIndex,
-                        metricsState = metricsState,
-                        onDrag = { dx, dy ->
-                            windowParams?.let { p ->
-                                p.x += dx.toInt()
-                                p.y += dy.toInt()
-                                
-                                val screenSize = getScreenSize()
-                                val viewWidth = composeView?.width ?: 0
-                                val viewHeight = composeView?.height ?: 0
-                                p.x = p.x.coerceIn(0, (screenSize.x - viewWidth).coerceAtLeast(0))
-                                p.y = p.y.coerceIn(0, (screenSize.y - viewHeight).coerceAtLeast(0))
-                                
-                                composeView?.let { windowManager.updateViewLayout(it, p) }
+
+                    AnimatedVisibility(
+                        visible = visible,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        OverlayContent(
+                            mode = mode,
+                            enabledModules = enabledModules,
+                            opacity = opacity,
+                            textSize = textSize,
+                            useMonospace = useMonospace,
+                            colorIndex = colorIndex,
+                            bgColorIndex = bgColorIndex,
+                            borderColorIndex = borderColorIndex,
+                            textColorIndex = textColorIndex,
+                            metricsState = metricsState,
+                            onDrag = { dx, dy ->
+                                windowParams?.let { p ->
+                                    p.x += dx.toInt()
+                                    p.y += dy.toInt()
+
+                                    val screenSize = getScreenSize()
+                                    val viewWidth = composeView?.width ?: 0
+                                    val viewHeight = composeView?.height ?: 0
+                                    p.x = p.x.coerceIn(0, (screenSize.x - viewWidth).coerceAtLeast(0))
+                                    p.y = p.y.coerceIn(0, (screenSize.y - viewHeight).coerceAtLeast(0))
+
+                                    composeView?.let { windowManager.updateViewLayout(it, p) }
+                                }
+                            },
+                            onDragEnd = {
+                                windowParams?.let { p ->
+                                    val currentOrientation = context.resources.configuration.orientation
+                                    val isCurrentLandscape = currentOrientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                                    settingsRepository.setOverlayPosition(isCurrentLandscape, p.x, p.y)
+                                }
+                            },
+                            onModeToggle = {
+                                val modes = listOf("Compact", "Minimal", "Expanded")
+                                val current = settingsRepository.overlayMode.value
+                                val next = modes[(modes.indexOf(current) + 1) % modes.size]
+                                settingsRepository.setOverlayMode(next)
                             }
-                        },
-                        onDragEnd = {
-                            windowParams?.let { p ->
-                                val currentOrientation = context.resources.configuration.orientation
-                                val isCurrentLandscape = currentOrientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-                                settingsRepository.setOverlayPosition(isCurrentLandscape, p.x, p.y)
-                            }
-                        },
-                        onModeToggle = {
-                            // Long-press the overlay to cycle Compact → Minimal → Expanded → Compact
-                            // without leaving the game.
-                            val modes = listOf("Compact", "Minimal", "Expanded")
-                            val current = settingsRepository.overlayMode.value
-                            val next = modes[(modes.indexOf(current) + 1) % modes.size]
-                            settingsRepository.setOverlayMode(next)
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
@@ -215,6 +227,11 @@ class OverlayManager @Inject constructor(
             overlayLifecycleOwner = null
             windowParams = null
         }
+        _isVisible.value = false
+    }
+
+    fun setOverlayVisible(visible: Boolean) {
+        _isVisible.value = visible
     }
 
     fun handleOrientationChange(orientation: Int) {

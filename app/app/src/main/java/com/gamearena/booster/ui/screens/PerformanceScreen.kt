@@ -155,19 +155,16 @@ class PerformanceViewModel @Inject constructor(
 
         var stoppedCount = 0
         try {
-            GamingModeEngine.executeCommand("pm trim-caches 4G")
-
             val targets = withContext(Dispatchers.IO) {
                 gamingModeEngine.getInstalledUserApps()
                     .filter { it.packageName !in whitelist }
             }
             for (app in targets) {
                 try {
-                    GamingModeEngine.executeCommand("am force-stop ${app.packageName}")
+                    am.killBackgroundProcesses(app.packageName)
                     stoppedCount++
                 } catch (_: Exception) {}
             }
-            GamingModeEngine.executeCommand("am kill-all")
         } catch (_: Exception) {}
         System.gc()
 
@@ -242,9 +239,6 @@ class PerformanceViewModel @Inject constructor(
         }
     }
 
-    val safeToSuspendList: List<String> get() = gamingModeEngine.SAFE_TO_SUSPEND
-    val googleSafeToSuspendList: List<String> get() = gamingModeEngine.GOOGLE_SAFE_TO_SUSPEND
-    val gamingDaemonsList: List<String> get() = gamingModeEngine.GAMING_DAEMONS
 }
 
 // ---------------------------------------------------------------------------
@@ -663,7 +657,6 @@ fun PerformanceScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val shizukuReady = true // Standalone mode — always ready
     val canActivate = true
 
     val isActive = gamingState is GamingModeState.Active
@@ -1497,64 +1490,11 @@ fun PerformanceScreen(
             }
         }
 
-        // ---- Protected Gaming Daemons info --------------------------------
+        // ---- Gaming Mode Info -----------------------------------------------
         item {
             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                 Text(
-                    "PROTECTED GAMING DAEMONS",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 10.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, Color(0xFF22C55E).copy(0.1f))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            "These daemons are NEVER touched — they control 120Hz lock, " +
-                                "4D vibration, frame interpolation and thermal management.",
-                            color = Color.Gray,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(bottom = 10.dp)
-                        )
-                        viewModel.gamingDaemonsList.forEach { pkg ->
-                            Row(
-                                modifier = Modifier.padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .background(Color(0xFF22C55E), CircleShape)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    pkg.substringAfterLast('.'),
-                                    color = Color(0xFF22C55E),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    "  ·  $pkg",
-                                    color = Color.Gray,
-                                    fontSize = 10.sp
-                                )
-                            }
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-
-        // ---- Safe-to-suspend info -----------------------------------------
-        item {
-            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                Text(
-                    "WILL BE SUSPENDED (OEM BLOATWARE)",
+                    "HOW GAMING MODE WORKS",
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.Gray,
                     modifier = Modifier.padding(start = 4.dp, bottom = 10.dp)
@@ -1567,13 +1507,18 @@ fun PerformanceScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            "Suspended via pm suspend (immune to PEM restart). " +
-                                "Automatically restored when Gaming Mode is turned off.",
+                            "Gaming Mode uses only standard Android APIs — no root, no ADB, " +
+                                "no external tools needed. Just install and play.",
                             color = Color.Gray,
                             fontSize = 11.sp,
                             modifier = Modifier.padding(bottom = 10.dp)
                         )
-                        viewModel.safeToSuspendList.forEach { pkg ->
+                        listOf(
+                            "Kill cached background processes to free RAM",
+                            "Enable Do Not Disturb to block notifications",
+                            "Auto-adjust volume, brightness, and rotation per game",
+                            "Restart notification listener (fixes OEM bugs)"
+                        ).forEach { feature ->
                             Row(
                                 modifier = Modifier.padding(vertical = 3.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -1585,15 +1530,10 @@ fun PerformanceScreen(
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    pkg.substringAfterLast('.'),
+                                    feature,
                                     color = Color.LightGray,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    "  ·  $pkg",
-                                    color = Color.Gray,
-                                    fontSize = 10.sp
                                 )
                             }
                         }

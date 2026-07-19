@@ -1,9 +1,5 @@
 # GameArena Game Booster ProGuard Rules
 
-# Keep Shizuku AIDL classes
--keep class com.gamearena.booster.shizuku.** { *; }
--keep class moe.shizuku.** { *; }
-
 # Keep Hilt generated classes
 -keep class dagger.hilt.** { *; }
 -keep class * extends dagger.hilt.android.lifecycle.HiltViewModel

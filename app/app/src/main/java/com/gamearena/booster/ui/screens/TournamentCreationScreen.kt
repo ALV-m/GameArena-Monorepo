@@ -353,20 +353,17 @@ fun TournamentCreationScreen(
                 Button(
                     onClick = {
                         val now = System.currentTimeMillis()
+                        val startIso = java.time.Instant.ofEpochMilli(now + (startTimeHours.toLongOrNull() ?: 1) * 3600000).toString()
+                        val deadlineIso = java.time.Instant.ofEpochMilli(now + (registrationHours.toLongOrNull() ?: 24) * 3600000).toString()
                         tournamentManager.createTournament(
                             name = name,
                             game = selectedGame,
-                            gamePackage = selectedGamePackage,
                             format = format,
                             entryFee = entryFee.toDoubleOrNull() ?: 0.0,
-                            prizePool = prizePool.toDoubleOrNull() ?: 0.0,
                             maxPlayers = maxPlayers.toIntOrNull() ?: 8,
-                            totalRounds = totalRounds.toIntOrNull() ?: 3,
-                            organizerName = "You",
-                            organizerId = "current_user",
                             rules = rules,
-                            startTime = now + (startTimeHours.toLongOrNull() ?: 1) * 3600000,
-                            registrationDeadline = now + (registrationHours.toLongOrNull() ?: 24) * 3600000,
+                            startTime = startIso,
+                            registrationDeadline = deadlineIso,
                             description = description
                         )
                         showSuccessDialog = true

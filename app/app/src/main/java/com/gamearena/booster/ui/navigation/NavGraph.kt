@@ -3,6 +3,9 @@ package com.gamearena.booster.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.navigation.NavHostController
@@ -49,6 +52,8 @@ fun GameArenaNavGraph(
     val tournamentManager = navViewModel.tournamentManager
     val authManager = navViewModel.authManager
 
+    var pendingTournamentRedirect by remember { mutableStateOf(false) }
+
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -61,14 +66,23 @@ fun GameArenaNavGraph(
         }
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
-                onFinishOnboarding = { navController.navigate(Screen.Login.route) { popUpTo(0) } }
+                onFinishOnboarding = { navController.navigate(Screen.Dashboard.route) { popUpTo(0) } }
             )
         }
         composable(Screen.Login.route) {
             LoginScreen(
                 authManager = authManager,
                 onNavigateToRegister = { navController.navigate(Screen.Register.route) },
-                onLoginSuccess = { navController.navigate(Screen.Dashboard.route) { popUpTo(0) } }
+                onLoginSuccess = {
+                    if (pendingTournamentRedirect) {
+                        pendingTournamentRedirect = false
+                        navController.navigate(Screen.Tournaments.route) {
+                            popUpTo(Screen.Dashboard.route) { inclusive = false }
+                        }
+                    } else {
+                        navController.navigate(Screen.Dashboard.route) { popUpTo(0) }
+                    }
+                }
             )
         }
         composable(Screen.Register.route) {
@@ -79,6 +93,7 @@ fun GameArenaNavGraph(
             )
         }
         composable(Screen.Dashboard.route) {
+            val isLoggedIn by authManager.isLoggedIn.collectAsState()
             DashboardScreen(
                 onNavigateToAppearance = { navController.navigate(Screen.Appearance.route) },
                 onNavigateToOverlayCustomization = { navController.navigate(Screen.OverlayCustomization.route) },
@@ -86,7 +101,14 @@ fun GameArenaNavGraph(
                 onNavigateToAbout = { navController.navigate(Screen.About.route) },
                 onNavigateToPerformance = { navController.navigate(Screen.Performance.route) },
                 onNavigateToThermalDiagnostics = { navController.navigate(Screen.ThermalDiagnostics.route) },
-                onNavigateToTournaments = { navController.navigate(Screen.Tournaments.route) }
+                onNavigateToTournaments = {
+                    if (isLoggedIn) {
+                        navController.navigate(Screen.Tournaments.route)
+                    } else {
+                        pendingTournamentRedirect = true
+                        navController.navigate(Screen.Login.route)
+                    }
+                }
             )
         }
         composable(Screen.Appearance.route) {

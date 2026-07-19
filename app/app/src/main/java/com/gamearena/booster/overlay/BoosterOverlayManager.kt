@@ -8,6 +8,8 @@ import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -84,6 +86,9 @@ class BoosterOverlayManager @Inject constructor(
     private val _selectedPanel = MutableStateFlow(OverlayPanel.PERFORMANCE)
     val selectedPanel: StateFlow<OverlayPanel> = _selectedPanel.asStateFlow()
 
+    private val _isVisible = MutableStateFlow(false)
+    val isVisible: StateFlow<Boolean> = _isVisible.asStateFlow()
+
     private var onScreenshotCallback: (() -> Unit)? = null
 
     fun setScreenshotCallback(callback: () -> Unit) {
@@ -91,27 +96,37 @@ class BoosterOverlayManager @Inject constructor(
     }
 
     fun showOverlay() {
-        if (composeView != null) return
+        if (composeView != null) {
+            _isVisible.value = true
+            return
+        }
 
         composeView = ComposeView(context).apply {
             setContent {
                 GameArenaTheme {
+                    val visible by _isVisible.collectAsState()
                     val metricsState by metricsEngine.metricsState.collectAsState()
                     val isExpanded by _isExpanded.collectAsState()
                     val selectedPanel by _selectedPanel.collectAsState()
                     val opacity by settingsRepository.overlayOpacity.collectAsState()
 
-                    BoosterOverlayContent(
-                        metricsState = metricsState,
-                        isExpanded = isExpanded,
-                        selectedPanel = selectedPanel,
-                        opacity = opacity,
-                        onToggleExpand = { _isExpanded.value = !_isExpanded.value },
-                        onPanelSelected = { _selectedPanel.value = it },
-                        onDrag = { dx, dy -> handleDrag(dx, dy) },
-                        onDragEnd = { persistPosition() },
-                        onScreenshot = { onScreenshotCallback?.invoke() }
-                    )
+                    AnimatedVisibility(
+                        visible = visible,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        BoosterOverlayContent(
+                            metricsState = metricsState,
+                            isExpanded = isExpanded,
+                            selectedPanel = selectedPanel,
+                            opacity = opacity,
+                            onToggleExpand = { _isExpanded.value = !_isExpanded.value },
+                            onPanelSelected = { _selectedPanel.value = it },
+                            onDrag = { dx, dy -> handleDrag(dx, dy) },
+                            onDragEnd = { persistPosition() },
+                            onScreenshot = { onScreenshotCallback?.invoke() }
+                        )
+                    }
                 }
             }
         }
@@ -166,6 +181,11 @@ class BoosterOverlayManager @Inject constructor(
             overlayLifecycleOwner = null
             windowParams = null
         }
+        _isVisible.value = false
+    }
+
+    fun setOverlayVisible(visible: Boolean) {
+        _isVisible.value = visible
     }
 
     private fun handleDrag(dx: Float, dy: Float) {

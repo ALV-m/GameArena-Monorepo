@@ -137,7 +137,8 @@ router.get('/disputes', async (req, res) => {
   try {
     const { status, limit = 50, offset = 0 } = req.query;
     let query = `SELECT d.*, u.username as reporter_name, m.player1_id, m.player2_id,
-                        u1.username as player1_name, u2.username as player2_name
+                        u1.username as player1_name, u2.username as player2_name,
+                        m.player1_score, m.player2_score, m.screenshot_url, m.screenshot_metadata
                  FROM ga_disputes d
                  JOIN ga_users u ON d.reporter_id = u.id
                  JOIN ga_matches m ON d.match_id = m.id

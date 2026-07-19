@@ -116,4 +116,10 @@ interface GameArenaApi {
 
     @POST("payments/paypal/capture")
     suspend fun paypalCapture(@Body body: Map<String, String>): Response<Map<String, String>>
+
+    @POST("matches/{id}/ocr-result")
+    suspend fun submitOcrResult(
+        @Path("id") matchId: String,
+        @Body body: Map<String, Any>
+    ): Response<Map<String, String>>
 }

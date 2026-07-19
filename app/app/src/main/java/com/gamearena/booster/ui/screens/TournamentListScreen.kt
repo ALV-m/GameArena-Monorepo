@@ -44,7 +44,7 @@ fun TournamentListScreen(
 
     val filteredTournaments by tournamentManager.filteredTournaments.collectAsState()
     val activeFilter by tournamentManager.activeFilter.collectAsState()
-    val pendingRequests by tournamentManager.getPendingRequests().collectAsState()
+    val pendingRequests by tournamentManager.matchRequests.collectAsState()
     var showRequestDialog by remember { mutableStateOf<TournamentInfo?>(null) }
     var requestMessage by remember { mutableStateOf("") }
     var showJoinSuccess by remember { mutableStateOf<TournamentInfo?>(null) }

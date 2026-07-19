@@ -1,6 +1,7 @@
 package com.gamearena.booster.metrics
 
 import android.app.ActivityManager
+import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -372,17 +373,30 @@ class PingMonitor @Inject constructor() {
 }
 
 @Singleton
-class TopProcessMonitor @Inject constructor() {
+class TopProcessMonitor @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
     data class TopProcess(val name: String, val cpuPercent: Float)
 
-    private val lineRegex = Regex("^\\s*([0-9.]+)%\\s+\\d+/([^:]+):")
+    private val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
 
     val topProcess: Flow<TopProcess?> = flow {
         while (true) {
             val result = try {
-                val process = Runtime.getRuntime().exec(arrayOf("dumpsys", "cpuinfo"))
-                val output = process.inputStream.bufferedReader().use { it.readText() }
-                parseTop(output)
+                val processes = activityManager.runningAppProcesses
+                if (processes.isNullOrEmpty()) {
+                    null
+                } else {
+                    processes
+                        .filter { it.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_SERVICE }
+                        .maxByOrNull { it.importance }
+                        ?.let { proc ->
+                            TopProcess(
+                                name = proc.processName.substringAfterLast('.'),
+                                cpuPercent = 0f
+                            )
+                        }
+                }
             } catch (e: Exception) {
                 null
             }
@@ -390,15 +404,44 @@ class TopProcessMonitor @Inject constructor() {
             delay(5000)
         }
     }
+}
 
-    private fun parseTop(output: String): TopProcess? {
-        for (line in output.lineSequence()) {
-            val match = lineRegex.find(line) ?: continue
-            val pct = match.groupValues[1].toFloatOrNull() ?: continue
-            val name = match.groupValues[2].trim()
-            if (name.equals("TOTAL", ignoreCase = true)) continue
-            return TopProcess(name, pct)
+@Singleton
+class ForegroundAppMonitor @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+    data class ForegroundApp(val packageName: String, val label: String)
+
+    val foregroundApp: Flow<ForegroundApp?> = flow {
+        val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+        val packageManager = context.packageManager
+
+        while (true) {
+            val result = try {
+                if (usageStatsManager != null) {
+                    val now = System.currentTimeMillis()
+                    val stats = usageStatsManager.queryUsageStats(
+                        UsageStatsManager.INTERVAL_DAILY,
+                        now - 5000,
+                        now
+                    )
+                    stats?.filter { it.lastTimeUsed > 0 }
+                        ?.maxByOrNull { it.lastTimeUsed }
+                        ?.let { statsEntry ->
+                            val label = try {
+                                val ai = packageManager.getApplicationInfo(statsEntry.packageName, 0)
+                                packageManager.getApplicationLabel(ai).toString()
+                            } catch (_: Exception) {
+                                statsEntry.packageName
+                            }
+                            ForegroundApp(statsEntry.packageName, label)
+                        }
+                } else null
+            } catch (e: Exception) {
+                null
+            }
+            emit(result)
+            delay(2000)
         }
-        return null
     }
 }

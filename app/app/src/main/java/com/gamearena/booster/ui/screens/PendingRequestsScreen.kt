@@ -33,8 +33,9 @@ fun PendingRequestsScreen(
     onNavigateBack: () -> Unit,
     tournamentManager: TournamentManager
 ) {
-    val incomingRequests by tournamentManager.getIncomingRequests().collectAsState()
-    val outgoingRequests by tournamentManager.getOutgoingRequests().collectAsState()
+    val allRequests by tournamentManager.matchRequests.collectAsState()
+    val incomingRequests = allRequests // server-side filtering not available; show all as incoming
+    val outgoingRequests = emptyList<com.gamearena.booster.model.MatchRequest>()
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Incoming", "Outgoing")
 
@@ -153,9 +154,9 @@ fun PendingRequestsScreen(
                     MatchRequestCard(
                         request = request,
                         isIncoming = selectedTab == 0,
-                        onAccept = { tournamentManager.acceptMatchRequest(request.id, "Request accepted!") },
-                        onDecline = { tournamentManager.declineMatchRequest(request.id) },
-                        onCancel = { tournamentManager.cancelMatchRequest(request.id) }
+                        onAccept = { /* TODO: implement accept via API */ },
+                        onDecline = { /* TODO: implement decline via API */ },
+                        onCancel = { /* TODO: implement cancel via API */ }
                     )
                 }
             }

@@ -3,7 +3,6 @@ package com.gamearena.booster.ui.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,7 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import com.gamearena.booster.auth.AuthManager
 import com.gamearena.booster.repository.SettingsRepository
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -26,11 +24,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SplashViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository,
-    private val authManager: AuthManager
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     val isOnboardingCompleted = settingsRepository.isOnboardingCompleted
-    val isLoggedIn = authManager.isLoggedIn
 }
 
 @Composable
@@ -40,14 +36,11 @@ fun SplashScreen(
     viewModel: SplashViewModel = hiltViewModel()
 ) {
     val isOnboardingCompleted by viewModel.isOnboardingCompleted.collectAsState()
-    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
 
     LaunchedEffect(key1 = true) {
-        delay(1500) // 1.5 second artificial delay for the splash visual
+        delay(1500)
         if (!isOnboardingCompleted) {
             onNavigateToOnboarding()
-        } else if (!isLoggedIn) {
-            onNavigateToOnboarding() // will go to login from onboarding
         } else {
             onNavigateToDashboard()
         }
@@ -56,7 +49,7 @@ fun SplashScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F0F0F)), // Deep black splash background from reference
+            .background(Color(0xFF0F0F0F)),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -84,8 +77,7 @@ fun SplashScreen(
                 letterSpacing = 2.sp
             )
         }
-        
-        // Attribution
+
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)

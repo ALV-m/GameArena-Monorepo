@@ -135,4 +135,63 @@ router.post('/:id/dispute', authenticate, async (req, res) => {
   }
 });
 
+router.post('/:id/ocr-result', authenticate, async (req, res) => {
+  try {
+    const { player1_score, player2_score, confidence, raw_text, game_hint, source } = req.body;
+
+    if (player1_score == null || player2_score == null) {
+      return res.status(400).json({ error: 'Scores are required' });
+    }
+
+    const match = await pool.query('SELECT * FROM ga_matches WHERE id = $1', [req.params.id]);
+    if (match.rows.length === 0) return res.status(404).json({ error: 'Match not found' });
+
+    const m = match.rows[0];
+    if (m.player1_id !== req.user.id && m.player2_id !== req.user.id) {
+      return res.status(403).json({ error: 'Not a match participant' });
+    }
+    if (m.status === 'completed') return res.status(400).json({ error: 'Match already completed' });
+
+    const metadata = {
+      ocr_result: {
+        player1_score: parseInt(player1_score),
+        player2_score: parseInt(player2_score),
+        confidence: parseFloat(confidence) || 0,
+        raw_text: raw_text || '',
+        game_hint: game_hint || null,
+        source: source || 'manual',
+        detected_at: new Date().toISOString(),
+        detected_by: req.user.id
+      }
+    };
+
+    const existingMeta = m.screenshot_metadata || {};
+    const ocrHistory = existingMeta.ocr_history || [];
+    ocrHistory.push(metadata.ocr_result);
+
+    await pool.query(
+      `UPDATE ga_matches SET screenshot_metadata = $1 WHERE id = $2`,
+      [JSON.stringify({ ...existingMeta, ocr_history: ocrHistory }), req.params.id]
+    );
+
+    const winnerId = parseInt(player1_score) > parseInt(player2_score) ? m.player1_id
+                   : parseInt(player2_score) > parseInt(player1_score) ? m.player2_id
+                   : null;
+
+    if (winnerId && parseFloat(confidence) >= 0.8) {
+      await pool.query(
+        `UPDATE ga_matches SET player1_score = $1, player2_score = $2, winner_id = $3,
+         status = 'completed', completed_at = NOW() WHERE id = $4`,
+        [player1_score, player2_score, winnerId, req.params.id]
+      );
+      res.json({ message: 'Match completed via auto-OCR', winner_id: winnerId, confidence });
+    } else {
+      res.json({ message: 'OCR result recorded, pending verification', confidence });
+    }
+  } catch (err) {
+    console.error('OCR result error:', err);
+    res.status(500).json({ error: 'Failed to process OCR result' });
+  }
+});
+
 module.exports = router;
