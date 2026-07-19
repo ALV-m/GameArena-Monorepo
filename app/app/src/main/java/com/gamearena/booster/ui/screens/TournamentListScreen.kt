@@ -37,10 +37,12 @@ fun TournamentListScreen(
     onNavigateBack: () -> Unit,
     onNavigateToCreate: () -> Unit,
     onNavigateToRequests: () -> Unit,
+    onNavigateToLogin: () -> Unit,
     tournamentManager: TournamentManager
 ) {
     val navViewModel: NavViewModel = hiltViewModel()
     val currentUser by navViewModel.authManager.currentUser.collectAsState()
+    val isLoggedIn = currentUser != null
 
     val filteredTournaments by tournamentManager.filteredTournaments.collectAsState()
     val activeFilter by tournamentManager.activeFilter.collectAsState()
@@ -83,7 +85,7 @@ fun TournamentListScreen(
                         color = Color.White
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    if (pendingRequests.isNotEmpty()) {
+                    if (isLoggedIn && pendingRequests.isNotEmpty()) {
                         Box(
                             modifier = Modifier
                                 .clickable { onNavigateToRequests() }
@@ -104,15 +106,17 @@ fun TournamentListScreen(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Box(
-                        modifier = Modifier
-                            .clickable { onNavigateToCreate() }
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(TournamentGold.copy(0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Create", tint = TournamentGold, modifier = Modifier.size(20.dp))
+                    if (isLoggedIn) {
+                        Box(
+                            modifier = Modifier
+                                .clickable { onNavigateToCreate() }
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(TournamentGold.copy(0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Create", tint = TournamentGold, modifier = Modifier.size(20.dp))
+                        }
                     }
                 }
             }
@@ -159,8 +163,20 @@ fun TournamentListScreen(
                 items(filteredTournaments) { tournament ->
                     TournamentCard(
                         tournament = tournament,
-                        onJoin = { showJoinSuccess = tournament },
-                        onRequestMatch = { showRequestDialog = tournament }
+                        onJoin = {
+                            if (isLoggedIn) {
+                                showJoinSuccess = tournament
+                            } else {
+                                onNavigateToLogin()
+                            }
+                        },
+                        onRequestMatch = {
+                            if (isLoggedIn) {
+                                showRequestDialog = tournament
+                            } else {
+                                onNavigateToLogin()
+                            }
+                        }
                     )
                 }
             }

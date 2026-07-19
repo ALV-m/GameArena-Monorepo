@@ -102,12 +102,7 @@ fun GameArenaNavGraph(
                 onNavigateToPerformance = { navController.navigate(Screen.Performance.route) },
                 onNavigateToThermalDiagnostics = { navController.navigate(Screen.ThermalDiagnostics.route) },
                 onNavigateToTournaments = {
-                    if (isLoggedIn) {
-                        navController.navigate(Screen.Tournaments.route)
-                    } else {
-                        pendingTournamentRedirect = true
-                        navController.navigate(Screen.Login.route)
-                    }
+                    navController.navigate(Screen.Tournaments.route)
                 }
             )
         }
@@ -134,6 +129,7 @@ fun GameArenaNavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToCreate = { navController.navigate(Screen.CreateTournament.route) },
                 onNavigateToRequests = { navController.navigate(Screen.PendingRequests.route) },
+                onNavigateToLogin = { navController.navigate(Screen.Login.route) },
                 tournamentManager = tournamentManager
             )
         }
