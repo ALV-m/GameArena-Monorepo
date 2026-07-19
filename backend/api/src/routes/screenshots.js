@@ -33,7 +33,7 @@ router.post('/:id/screenshot', authenticate, upload.single('screenshot'), async 
   try {
     if (!req.file) return res.status(400).json({ error: 'No valid image uploaded' });
 
-    const match = await pool.query('SELECT * FROM matches WHERE id = $1', [req.params.id]);
+    const match = await pool.query('SELECT * FROM ga_matches WHERE id = $1', [req.params.id]);
     if (match.rows.length === 0) {
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: 'Match not found' });
@@ -54,7 +54,7 @@ router.post('/:id/screenshot', authenticate, upload.single('screenshot'), async 
     });
 
     await pool.query(
-      `UPDATE matches SET screenshot_url = $1, screenshot_metadata = $2, updated_at = NOW() WHERE id = $3`,
+      `UPDATE ga_matches SET screenshot_url = $1, screenshot_metadata = $2, updated_at = NOW() WHERE id = $3`,
       [screenshotUrl, metadata, req.params.id]
     );
 
@@ -74,7 +74,7 @@ router.post('/:id/screenshot', authenticate, upload.single('screenshot'), async 
 router.get('/:id/screenshots', authenticate, async (req, res) => {
   try {
     const match = await pool.query(
-      'SELECT screenshot_url, screenshot_metadata FROM matches WHERE id = $1',
+      'SELECT screenshot_url, screenshot_metadata FROM ga_matches WHERE id = $1',
       [req.params.id]
     );
     if (match.rows.length === 0) return res.status(404).json({ error: 'Match not found' });

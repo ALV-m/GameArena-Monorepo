@@ -10,10 +10,10 @@ router.get('/', async (req, res) => {
     let query = `
       SELECT c.*, u1.username as challenger_name, u2.username as opponent_name,
              w.username as winner_name
-      FROM challenges c
-      JOIN users u1 ON c.challenger_id = u1.id
-      LEFT JOIN users u2 ON c.opponent_id = u2.id
-      LEFT JOIN users w ON c.winner_id = w.id
+      FROM ga_challenges c
+      JOIN ga_users u1 ON c.challenger_id = u1.id
+      LEFT JOIN ga_users u2 ON c.opponent_id = u2.id
+      LEFT JOIN ga_users w ON c.winner_id = w.id
       WHERE 1=1`;
     const params = [];
     let p = 0;
@@ -42,7 +42,7 @@ router.post('/', authenticate, async (req, res) => {
 
     await client.query('BEGIN');
     const wallet = await client.query(
-      'SELECT * FROM wallets WHERE user_id = $1 FOR UPDATE',
+      'SELECT * FROM ga_wallets WHERE user_id = $1 FOR UPDATE',
       [req.user.id]
     );
     if (parseFloat(wallet.rows[0].balance) < parseFloat(stake_amount)) {
@@ -50,19 +50,19 @@ router.post('/', authenticate, async (req, res) => {
     }
 
     await client.query(
-      'UPDATE wallets SET balance = balance - $1, total_spent = total_spent + $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE ga_wallets SET balance = balance - $1, total_spent = total_spent + $1, updated_at = NOW() WHERE id = $2',
       [stake_amount, wallet.rows[0].id]
     );
 
     let opponentId = null;
     if (opponent_username) {
-      const opp = await client.query('SELECT id FROM users WHERE username = $1', [opponent_username]);
+      const opp = await client.query('SELECT id FROM ga_users WHERE username = $1', [opponent_username]);
       if (opp.rows.length === 0) throw new Error('Opponent not found');
       if (opp.rows[0].id === req.user.id) throw new Error('Cannot challenge yourself');
       opponentId = opp.rows[0].id;
 
       const oppWallet = await client.query(
-        'SELECT * FROM wallets WHERE user_id = $1 FOR UPDATE',
+        'SELECT * FROM ga_wallets WHERE user_id = $1 FOR UPDATE',
         [opponentId]
       );
       if (oppWallet.rows.length > 0 && parseFloat(oppWallet.rows[0].balance) < parseFloat(stake_amount)) {
@@ -71,13 +71,13 @@ router.post('/', authenticate, async (req, res) => {
     }
 
     const challenge = await client.query(
-      `INSERT INTO challenges (challenger_id, opponent_id, game, stake_amount, status)
+      `INSERT INTO ga_challenges (challenger_id, opponent_id, game, stake_amount, status)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [req.user.id, opponentId, game, stake_amount, opponentId ? 'open' : 'open']
     );
 
     await client.query(
-      `INSERT INTO transactions (wallet_id, type, amount, status, description)
+      `INSERT INTO ga_transactions (wallet_id, type, amount, status, description)
        VALUES ($1, 'challenge_entry', $2, 'pending', $3)`,
       [wallet.rows[0].id, stake_amount, `Challenge stake for ${game}`]
     );
@@ -97,7 +97,7 @@ router.post('/:id/accept', authenticate, async (req, res) => {
   try {
     await client.query('BEGIN');
     const challenge = await client.query(
-      'SELECT * FROM challenges WHERE id = $1 FOR UPDATE',
+      'SELECT * FROM ga_challenges WHERE id = $1 FOR UPDATE',
       [req.params.id]
     );
     if (challenge.rows.length === 0) throw new Error('Challenge not found');
@@ -108,7 +108,7 @@ router.post('/:id/accept', authenticate, async (req, res) => {
     if (c.opponent_id && c.opponent_id !== req.user.id) throw new Error('Challenge is for a specific opponent');
 
     const wallet = await client.query(
-      'SELECT * FROM wallets WHERE user_id = $1 FOR UPDATE',
+      'SELECT * FROM ga_wallets WHERE user_id = $1 FOR UPDATE',
       [req.user.id]
     );
     if (parseFloat(wallet.rows[0].balance) < parseFloat(c.stake_amount)) {
@@ -116,22 +116,22 @@ router.post('/:id/accept', authenticate, async (req, res) => {
     }
 
     await client.query(
-      'UPDATE wallets SET balance = balance - $1, total_spent = total_spent + $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE ga_wallets SET balance = balance - $1, total_spent = total_spent + $1, updated_at = NOW() WHERE id = $2',
       [c.stake_amount, wallet.rows[0].id]
     );
     await client.query(
-      `INSERT INTO transactions (wallet_id, type, amount, status, description)
+      `INSERT INTO ga_transactions (wallet_id, type, amount, status, description)
        VALUES ($1, 'challenge_entry', $2, 'pending', $3)`,
       [wallet.rows[0].id, c.stake_amount, `Challenge stake accepted`]
     );
 
     await client.query(
-      "UPDATE challenges SET opponent_id = $1, status = 'accepted', accepted_at = NOW() WHERE id = $2",
+      "UPDATE ga_challenges SET opponent_id = $1, status = 'accepted', accepted_at = NOW() WHERE id = $2",
       [req.user.id, req.params.id]
     );
 
     const match = await client.query(
-      `INSERT INTO matches (challenge_id, player1_id, player2_id, stake_amount, status)
+      `INSERT INTO ga_matches (challenge_id, player1_id, player2_id, stake_amount, status)
        VALUES ($1, $2, $3, $4, 'pending') RETURNING *`,
       [req.params.id, c.challenger_id, req.user.id, parseFloat(c.stake_amount) * 2]
     );
@@ -151,7 +151,7 @@ router.post('/:id/cancel', authenticate, async (req, res) => {
   try {
     await client.query('BEGIN');
     const challenge = await client.query(
-      'SELECT * FROM challenges WHERE id = $1 FOR UPDATE',
+      'SELECT * FROM ga_challenges WHERE id = $1 FOR UPDATE',
       [req.params.id]
     );
     if (challenge.rows.length === 0) throw new Error('Challenge not found');
@@ -159,16 +159,16 @@ router.post('/:id/cancel', authenticate, async (req, res) => {
     if (!['open'].includes(challenge.rows[0].status)) throw new Error('Cannot cancel');
 
     const wallet = await client.query(
-      'SELECT * FROM wallets WHERE user_id = $1 FOR UPDATE',
+      'SELECT * FROM ga_wallets WHERE user_id = $1 FOR UPDATE',
       [req.user.id]
     );
     await client.query(
-      'UPDATE wallets SET balance = balance + $1, total_spent = total_spent - $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE ga_wallets SET balance = balance + $1, total_spent = total_spent - $1, updated_at = NOW() WHERE id = $2',
       [challenge.rows[0].stake_amount, wallet.rows[0].id]
     );
 
     await client.query(
-      "UPDATE challenges SET status = 'cancelled' WHERE id = $1",
+      "UPDATE ga_challenges SET status = 'cancelled' WHERE id = $1",
       [req.params.id]
     );
 

@@ -22,13 +22,13 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
     }
 
-    const existing = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+    const existing = await pool.query('SELECT id FROM ga_users WHERE username = $1', [username]);
     if (existing.rows.length > 0) {
       return res.status(409).json({ error: 'Username already taken' });
     }
 
     if (email) {
-      const emailCheck = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+      const emailCheck = await pool.query('SELECT id FROM ga_users WHERE email = $1', [email]);
       if (emailCheck.rows.length > 0) {
         return res.status(409).json({ error: 'Email already registered' });
       }
@@ -36,12 +36,12 @@ router.post('/register', async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
     const result = await pool.query(
-      `INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email, is_admin, created_at`,
+      `INSERT INTO ga_users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email, is_admin, created_at`,
       [username, email || null, passwordHash]
     );
 
     const user = result.rows[0];
-    await pool.query('INSERT INTO wallets (user_id) VALUES ($1)', [user.id]);
+    await pool.query('INSERT INTO ga_wallets (user_id) VALUES ($1)', [user.id]);
 
     const token = generateToken(user);
     res.status(201).json({ user, token });
@@ -60,7 +60,7 @@ router.post('/login', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT id, username, email, password_hash, is_admin, is_banned FROM users WHERE username = $1',
+      'SELECT id, username, email, password_hash, is_admin, is_banned FROM ga_users WHERE username = $1',
       [username]
     );
     if (result.rows.length === 0) {
@@ -94,8 +94,8 @@ router.get('/me', authenticate, async (req, res) => {
       `SELECT u.id, u.username, u.email, u.avatar_url, u.country, u.rank_tier, u.elo_rating,
               u.total_wins, u.total_losses, u.total_matches, u.is_admin, u.created_at,
               w.balance, w.currency, w.total_earned, w.total_deposited
-       FROM users u
-       JOIN wallets w ON w.user_id = u.id
+       FROM ga_users u
+       JOIN ga_wallets w ON w.user_id = u.id
        WHERE u.id = $1`,
       [req.user.id]
     );

@@ -6,16 +6,16 @@ async function seed() {
   try {
     const passwordHash = await bcrypt.hash('admin123', 12);
     await pool.query(
-      `INSERT INTO users (username, email, password_hash, is_admin)
+      `INSERT INTO ga_users (username, email, password_hash, is_admin)
        VALUES ('admin', 'admin@gamearena.com', $1, TRUE)
        ON CONFLICT (username) DO NOTHING`,
       [passwordHash]
     );
 
-    const admin = await pool.query("SELECT id FROM users WHERE username = 'admin'");
+    const admin = await pool.query("SELECT id FROM ga_users WHERE username = 'admin'");
     if (admin.rows.length > 0) {
       await pool.query(
-        'INSERT INTO wallets (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING',
+        'INSERT INTO ga_wallets (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING',
         [admin.rows[0].id]
       );
     }

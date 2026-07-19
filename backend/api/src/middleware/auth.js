@@ -20,7 +20,7 @@ async function authenticate(req, res, next) {
   }
   try {
     const decoded = verifyToken(header.split(' ')[1]);
-    const result = await pool.query('SELECT id, username, email, is_admin, is_banned FROM users WHERE id = $1', [decoded.id]);
+    const result = await pool.query('SELECT id, username, email, is_admin, is_banned FROM ga_users WHERE id = $1', [decoded.id]);
     if (result.rows.length === 0) return res.status(401).json({ error: 'User not found' });
     if (result.rows[0].is_banned) return res.status(403).json({ error: 'Account is banned' });
     req.user = result.rows[0];
