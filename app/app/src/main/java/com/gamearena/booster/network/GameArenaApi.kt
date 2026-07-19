@@ -122,4 +122,7 @@ interface GameArenaApi {
         @Path("id") matchId: String,
         @Body body: Map<String, Any>
     ): Response<Map<String, String>>
+
+    @POST("analytics/track")
+    suspend fun trackEvent(@Body body: Map<String, Any>): Response<Map<String, String>>
 }

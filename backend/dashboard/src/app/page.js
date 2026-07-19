@@ -123,6 +123,7 @@ export default function AdminDashboard() {
       else if (p === 'transactions') setData({ transactions: await api.getTransactions() });
       else if (p === 'disputes') setData({ disputes: await api.getDisputes({ status: disputeFilter === 'all' ? undefined : disputeFilter }) });
       else if (p === 'payments') setData({ payments: await api.getPayments() });
+      else if (p === 'analytics') setData({ analytics: await api.getAnalytics() });
     } catch (err) { setError(err.message); }
     setLoading(false);
   }
@@ -195,7 +196,7 @@ export default function AdminDashboard() {
           {user && <p style={{ color: '#666', margin: 0, fontSize: '11px' }}>{user.username} — Admin</p>}
         </div>
         <nav style={styles.nav}>
-          {['dashboard', 'users', 'tournaments', 'transactions', 'disputes', 'payments'].map(p => (
+          {['dashboard', 'users', 'tournaments', 'transactions', 'disputes', 'payments', 'analytics'].map(p => (
             <button key={p} style={styles.navBtn(page === p)} onClick={() => { setPage(p); loadPage(p); }}>
               {p === 'disputes' && data?.disputes?.some(d => d.status === 'open')
                 ? `⚠️ ${p.charAt(0).toUpperCase() + p.slice(1)}`
@@ -534,6 +535,82 @@ export default function AdminDashboard() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {page === 'analytics' && data?.analytics && (
+        <div style={styles.section}>
+          <h2 style={styles.sectionTitle}>App Analytics</h2>
+          <div style={styles.cards}>
+            <div style={styles.card}>
+              <p style={styles.cardTitle}>Total Downloads</p>
+              <p style={{ ...styles.cardValue, color: '#6C5CE7' }}>{data.analytics.downloads?.total || 0}</p>
+              <p style={styles.cardSub}>Unique devices</p>
+            </div>
+            <div style={styles.card}>
+              <p style={styles.cardTitle}>Total Installs</p>
+              <p style={{ ...styles.cardValue, color: '#4ecdc4' }}>{data.analytics.installs?.total || 0}</p>
+              <p style={styles.cardSub}>App installed</p>
+            </div>
+            <div style={styles.card}>
+              <p style={styles.cardTitle}>Active Today</p>
+              <p style={{ ...styles.cardValue, color: '#22C55E' }}>{data.analytics.active?.today || 0}</p>
+              <p style={styles.cardSub}>Opened in last 24h</p>
+            </div>
+            <div style={styles.card}>
+              <p style={styles.cardTitle}>Active This Week</p>
+              <p style={{ ...styles.cardValue, color: '#f9ca24' }}>{data.analytics.active?.thisWeek || 0}</p>
+              <p style={styles.cardSub}>Last 7 days</p>
+            </div>
+            <div style={styles.card}>
+              <p style={styles.cardTitle}>Active This Month</p>
+              <p style={{ ...styles.cardValue, color: '#ff9f43' }}>{data.analytics.active?.thisMonth || 0}</p>
+              <p style={styles.cardSub}>Last 30 days</p>
+            </div>
+            <div style={styles.card}>
+              <p style={styles.cardTitle}>Total Devices</p>
+              <p style={styles.cardValue}>{data.analytics.devices?.total || 0}</p>
+              <p style={styles.cardSub}>{data.analytics.devices?.today || 0} active today</p>
+            </div>
+          </div>
+
+          {data.analytics.byVersion?.length > 0 && (
+            <div style={{ padding: '0 32px 16px' }}>
+              <div style={styles.card}>
+                <p style={styles.cardTitle}>By Version</p>
+                <BarChart data={data.analytics.byVersion} labelKey="app_version" valueKey="devices" color="#6C5CE7" />
+              </div>
+            </div>
+          )}
+
+          {data.analytics.daily?.length > 0 && (
+            <div style={{ padding: '0 32px 16px' }}>
+              <div style={styles.card}>
+                <p style={styles.cardTitle}>Daily Events (30 days)</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px', marginTop: '12px' }}>
+                  {(() => {
+                    const byDate = {};
+                    data.analytics.daily.forEach(r => {
+                      const key = r.date?.split('T')[0] || r.date;
+                      if (!byDate[key]) byDate[key] = { date: key, download: 0, install: 0, active: 0 };
+                      byDate[key][r.event_type] = parseInt(r.count);
+                    });
+                    return Object.values(byDate).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 14).map(d => (
+                      <div key={d.date} style={{ background: '#0f0f1a', borderRadius: '8px', padding: '10px' }}>
+                        <p style={{ color: '#888', fontSize: '11px', margin: 0 }}>{d.date}</p>
+                        <p style={{ color: '#6C5CE7', fontSize: '13px', margin: '4px 0 0', fontWeight: 'bold' }}>
+                          {d.active} active
+                        </p>
+                        <p style={{ color: '#666', fontSize: '11px', margin: '2px 0 0' }}>
+                          {d.download}dl / {d.install}inst
+                        </p>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

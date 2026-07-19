@@ -1,5 +1,7 @@
 package com.gamearena.booster.ui.screens
 
+import android.content.Context
+import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,16 +19,55 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import com.gamearena.booster.repository.SettingsRepository
+import com.gamearena.booster.network.GameArenaApi
+import android.provider.Settings
+import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class SplashViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository
+    @ApplicationContext private val context: Context,
+    private val settingsRepository: SettingsRepository,
+    private val api: GameArenaApi
 ) : ViewModel() {
     val isOnboardingCompleted = settingsRepository.isOnboardingCompleted
+
+    init {
+        viewModelScope.launch {
+            val isFirstLaunch = !settingsRepository.isOnboardingCompleted.value
+            val deviceId = try {
+                Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown"
+            } catch (_: Exception) { "unknown" }
+            val version = try {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
+            } catch (_: Exception) { "1.0.0" }
+
+            try {
+                api.trackEvent(mapOf(
+                    "event_type" to if (isFirstLaunch) "download" else "active",
+                    "device_id" to deviceId,
+                    "app_version" to version,
+                    "platform" to "android"
+                ))
+                if (isFirstLaunch) {
+                    api.trackEvent(mapOf(
+                        "event_type" to "install",
+                        "device_id" to deviceId,
+                        "app_version" to version,
+                        "platform" to "android"
+                    ))
+                }
+            } catch (e: Exception) {
+                Log.d("GameArena", "Analytics track failed: ${e.message}")
+            }
+        }
+    }
 }
 
 @Composable

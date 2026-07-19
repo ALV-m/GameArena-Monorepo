@@ -34,4 +34,6 @@ export const api = {
     apiFetch(`/api/admin/disputes/${id}/resolve`, { method: 'PUT', body: JSON.stringify(data) }),
 
   getPayments: (params = {}) => apiFetch(`/api/admin/payments?${new URLSearchParams(params)}`),
+
+  getAnalytics: () => apiFetch('/api/analytics/stats'),
 };

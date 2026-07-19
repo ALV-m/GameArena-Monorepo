@@ -15,6 +15,8 @@ const matchRoutes = require('./routes/matches');
 const paymentRoutes = require('./routes/payments');
 const adminRoutes = require('./routes/admin');
 const screenshotRoutes = require('./routes/screenshots');
+const analyticsRoutes = require('./routes/analytics');
+const downloadRoutes = require('./routes/download');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -54,6 +56,8 @@ app.use('/api/matches', matchRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/matches', screenshotRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/download', downloadRoutes);
 app.use('/uploads', express.static(require('path').join(__dirname, '../uploads')));
 
 app.use((err, req, res, next) => {

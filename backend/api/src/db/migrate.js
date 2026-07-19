@@ -178,6 +178,21 @@ CREATE INDEX idx_ga_matches_status ON ga_matches(status);
 CREATE INDEX idx_ga_disputes_status ON ga_disputes(status);
 CREATE INDEX idx_ga_payments_user ON ga_payments(user_id);
 CREATE INDEX idx_ga_payments_status ON ga_payments(status);
+
+CREATE TABLE ga_app_analytics (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  event_type VARCHAR(20) NOT NULL CHECK (event_type IN ('download', 'install', 'active')),
+  device_id VARCHAR(255) NOT NULL,
+  app_version VARCHAR(20),
+  platform VARCHAR(20) DEFAULT 'android',
+  country VARCHAR(2),
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_ga_app_analytics_type ON ga_app_analytics(event_type);
+CREATE INDEX idx_ga_app_analytics_device ON ga_app_analytics(device_id);
+CREATE INDEX idx_ga_app_analytics_created ON ga_app_analytics(created_at);
 `;
 
 async function migrate() {
