@@ -11,11 +11,14 @@ import android.os.Build
 import android.os.PowerManager
 import android.view.Choreographer
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.roundToInt
@@ -87,12 +90,14 @@ class FpsMonitor @Inject constructor() {
             }
         }
 
-        Choreographer.getInstance().postFrameCallback(callback)
+        withContext(Dispatchers.Main) {
+            Choreographer.getInstance().postFrameCallback(callback)
+        }
 
         awaitClose {
             Choreographer.getInstance().removeFrameCallback(callback)
         }
-    }
+    }.flowOn(Dispatchers.Main)
 }
 
 @Singleton
